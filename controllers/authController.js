@@ -41,9 +41,11 @@ const register = async (req, res, next) => {
             },
         });
     } catch (error) {
+        console.error('REGISTER ERROR:', error.name, '|', error.message);
         next(error);
     }
 };
+
 
 
 
