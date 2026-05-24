@@ -31,7 +31,7 @@ const getFeedPosts = async (req, res, next) => {
     try {
         const page = parseInt(req.query.page) || 1;
         const limit = parseInt(req.query.limit) || 10;
-        const skip = (page - 1)
+        const skip = (page - 1) * limit;
 
         const currentUser = await User.findById(req.user._id).select('connections');
         const connectionIds = currentUser.connections;
@@ -88,34 +88,34 @@ const likePost = async (req, res, next) => {
         const post = await Post.findById(req.params.id);
 
         if (!post) {
-            return res.status(404).json({
-                success: false,
-                message: 'Post not found'
-            });
+            return res.status(404).json({ success: false, message: 'Post not found' });
         }
 
-        const userId = req.user._id.toString();
-        const isLiked = post.likes.some((id) => id.toString() === userId);
+        const userId = req.user._id;
 
-        if (isLiked) {
-            post.likes = post.likes.some((id) => id.toString() === userId);
-        } else {
-            post.likes.push(req.user._id);
-        }
+        const isLiked = post.likes.some((id) => id.toString() === userId.toString());
 
-        await post.save();
+        const update = isLiked
+            ? { $pull: { likes: userId } }
+            : { $addToSet: { likes: userId } };
+
+        const updatedPost = await Post.findByIdAndUpdate(
+            req.params.id,
+            update,
+            { new: true }
+        );
 
         res.status(200).json({
             success: true,
             liked: !isLiked,
-            likesCount: post.likes.length,
+            likesCount: updatedPost.likes.length,
         });
 
     } catch (error) {
         console.error('LIKE POST ERROR:', error.name, '|', error.message);
-        next(error)
+        next(error);
     }
-}
+};
 
 
 
