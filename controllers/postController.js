@@ -1,5 +1,6 @@
 const User = require('../models/User');
 const Post = require('../models/Post');
+const { createNotification } = require('./notificationController');
 
 const createPost = async (req, res, next) => {
     try {
@@ -105,6 +106,16 @@ const likePost = async (req, res, next) => {
             { new: true }
         );
 
+        if (!isLiked) {
+            await createNotification({
+                recipient: post.author,
+                sender: userId,
+                type: 'like',
+                post: post._id,
+                message: `${req.user.name} liked your post`,
+            });
+        }
+
         res.status(200).json({
             success: true,
             liked: !isLiked,
@@ -138,6 +149,14 @@ const addComment = async (req, res, next) => {
         post.comments.push(newComment);
 
         await post.save();
+
+        await createNotification({
+            recipient: post.author,
+            sender: req.user._id,
+            type: 'comment',
+            post: post._id,
+            message: `${req.user.name} commented: "${text.slice(0, 60)}${text.length > 60 ? '...' : ''}"`,
+        });
 
         await post.populate('comments.user', 'name profilePicture');
 
