@@ -38,7 +38,7 @@ connectDB();
 app.use(helmet());
 app.use(cors({
     origin: process.env.NODE_ENV === 'production'
-        ? 'https://your-frontend-domain.vercel.app'
+        ? 'https://nexus-frontend-omega-ten.vercel.app'
         : 'http://localhost:3000',
     credentials: true,
 }));
