@@ -1,17 +1,44 @@
 const User = require('../models/User');
 const Post = require('../models/Post');
 const { createNotification } = require('./notificationController');
+const ImageKit = require('imagekit');
+
+let imagekit = null;
+if (process.env.IMAGEKIT_PUBLIC_KEY && 
+    process.env.IMAGEKIT_PRIVATE_KEY && 
+    process.env.IMAGEKIT_URL_ENDPOINT && 
+    process.env.IMAGEKIT_PUBLIC_KEY !== 'your_imagekit_public_key' &&
+    process.env.IMAGEKIT_PUBLIC_KEY.trim() !== '') {
+    imagekit = new ImageKit({
+        publicKey: process.env.IMAGEKIT_PUBLIC_KEY,
+        privateKey: process.env.IMAGEKIT_PRIVATE_KEY,
+        urlEndpoint: process.env.IMAGEKIT_URL_ENDPOINT
+    });
+}
+
+const getImageKitAuth = async (req, res, next) => {
+    try {
+        if (!imagekit) {
+            return res.status(400).json({ success: false, message: 'ImageKit is not configured' });
+        }
+        const authenticationParameters = imagekit.getAuthenticationParameters();
+        res.status(200).json(authenticationParameters);
+    } catch (error) {
+        console.error('IMAGEKIT AUTH ERROR:', error.name, '|', error.message);
+        next(error);
+    }
+};
 
 const createPost = async (req, res, next) => {
     try {
         const { content, image } = req.body;
-        if (!content?.trim()) {
-            return res.status(400).json({ success: false, message: 'Post content is required' });
+        if (!content?.trim() && !image) {
+            return res.status(400).json({ success: false, message: 'Post content or image is required' });
         }
 
         const post = await Post.create({
             author: req.user._id,
-            content,
+            content: content || '',
             image: image || '',
         });
 
@@ -196,4 +223,4 @@ const deletePost = async (req, res, next) => {
 }
 
 
-module.exports = { createPost, getFeedPosts, getUserPosts, likePost, addComment, deletePost };
+module.exports = { createPost, getFeedPosts, getUserPosts, likePost, addComment, deletePost, getImageKitAuth };

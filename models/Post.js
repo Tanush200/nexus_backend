@@ -9,8 +9,8 @@ const postSchema = new mongoose.Schema({
 
     content: {
         type: String,
-        required: [true, 'Post Content is required'],
-        maxlenght: [3000, 'Post is too long']
+        required: false,
+        maxlength: [3000, 'Post is too long']
     },
 
     image: {

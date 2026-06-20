@@ -85,7 +85,7 @@ io.on('connection', (socket) => {
     socket.on('user:online', (userId) => {
         onlineUsers.set(userId, socket.id);
         socket.broadcast.emit('user:status', { userId, online: true });
-        console.log(`✅ User online: ${userId}`);
+        // console.log(`✅ User online: ${userId}`);
     });
 
 
@@ -154,7 +154,7 @@ io.on('connection', (socket) => {
             if (socketId === socket.id) {
                 onlineUsers.delete(userId);
                 socket.broadcast.emit('user:status', { userId, online: false });
-                console.log(`❌ User offline: ${userId}`);
+                // console.log(`❌ User offline: ${userId}`);
                 break;
             }
         }
