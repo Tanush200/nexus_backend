@@ -88,6 +88,45 @@ const userSchema = new mongoose.Schema(
             type: Boolean,
             default: false,
         },
+        isVerified: {
+            type: Boolean,
+            default: false,
+        },
+        verifiedWorkEmail: {
+            type: String,
+            default: '',
+        },
+        verifiedCompany: {
+            type: String,
+            default: '',
+        },
+        githubUsername: {
+            type: String,
+            default: '',
+        },
+        githubVerified: {
+            type: Boolean,
+            default: false,
+        },
+        githubCommits: {
+            type: Number,
+            default: 0,
+        },
+        figmaUsername: {
+            type: String,
+            default: '',
+        },
+        figmaVerified: {
+            type: Boolean,
+            default: false,
+        },
+        verificationCode: {
+            type: String,
+            default: '',
+        },
+        verificationCodeExpires: {
+            type: Date,
+        },
     },
     {
 
