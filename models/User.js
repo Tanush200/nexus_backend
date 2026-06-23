@@ -127,6 +127,30 @@ const userSchema = new mongoose.Schema(
         verificationCodeExpires: {
             type: Date,
         },
+        // Nextdoor extensions
+        pincode: {
+            type: String,
+            default: '',
+        },
+        pincodeVerified: {
+            type: Boolean,
+            default: false,
+        },
+        phone: {
+            type: String,
+            default: '',
+        },
+        phoneVerified: {
+            type: Boolean,
+            default: false,
+        },
+        phoneOtp: {
+            type: String,
+            default: '',
+        },
+        phoneOtpExpires: {
+            type: Date,
+        },
     },
     {
 

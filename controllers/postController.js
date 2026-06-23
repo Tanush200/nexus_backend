@@ -31,18 +31,39 @@ const getImageKitAuth = async (req, res, next) => {
 
 const createPost = async (req, res, next) => {
     try {
-        const { content, image } = req.body;
+        const { content, image, postType, lostFoundStatus, lostFoundLocation, lostFoundItem } = req.body;
         if (!content?.trim() && !image) {
             return res.status(400).json({ success: false, message: 'Post content or image is required' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        let pincode = '';
+        if (postType === 'neighborhood' || postType === 'lost_found') {
+            if (!user.pincodeVerified || !user.pincode) {
+                return res.status(403).json({
+                    success: false,
+                    message: 'You must verify your neighborhood pincode before posting here.'
+                });
+            }
+            pincode = user.pincode;
         }
 
         const post = await Post.create({
             author: req.user._id,
             content: content || '',
             image: image || '',
+            postType: postType || 'general',
+            pincode,
+            lostFoundStatus,
+            lostFoundLocation,
+            lostFoundItem
         });
 
-        await post.populate('author', 'name headline profilePicture');
+        await post.populate('author', 'name headline profilePicture pincode');
 
         res.status(201).json({
             success: true,
@@ -66,16 +87,19 @@ const getFeedPosts = async (req, res, next) => {
 
         const authorIds = [...connectionIds, req.user._id];
 
-        const posts = await Post.find({
-            author: { $in: authorIds }
-        }).populate('author', 'name headline profilePicture')
+        const query = {
+            author: { $in: authorIds },
+            postType: { $in: ['general', undefined] }
+        };
+
+        const posts = await Post.find(query).populate('author', 'name headline profilePicture')
             .populate('comments.user', 'name profilePicture')
             .sort({ createdAt: -1 })
             .skip(skip)
             .limit(limit);
 
 
-        const totalPosts = await Post.countDocuments({ author: { $in: authorIds } });
+        const totalPosts = await Post.countDocuments(query);
 
         res.status(200).json({
             success: true,
@@ -197,30 +221,74 @@ const addComment = async (req, res, next) => {
 
 
 
+const getNeighborhoodFeed = async (req, res, next) => {
+    try {
+        const page = parseInt(req.query.page) || 1;
+        const limit = parseInt(req.query.limit) || 10;
+        const skip = (page - 1) * limit;
+
+        const user = await User.findById(req.user._id);
+        if (!user || !user.pincodeVerified || !user.pincode) {
+            return res.status(403).json({
+                success: false,
+                message: 'You must verify your pincode to access the neighborhood feed.'
+            });
+        }
+
+        const query = {
+            pincode: user.pincode,
+            postType: req.query.type ? req.query.type : { $in: ['neighborhood', 'lost_found'] }
+        };
+
+        const posts = await Post.find(query)
+            .populate('author', 'name headline profilePicture pincode')
+            .populate('comments.user', 'name profilePicture')
+            .sort({ createdAt: -1 })
+            .skip(skip)
+            .limit(limit);
+
+        const totalPosts = await Post.countDocuments(query);
+
+        res.status(200).json({
+            success: true,
+            posts,
+            pagination: {
+                currentPage: page,
+                totalPages: Math.ceil(totalPosts / limit),
+                totalPosts,
+                hasMore: page < Math.ceil(totalPosts / limit),
+            },
+        });
+    } catch (error) {
+        console.error('GET NEIGHBORHOOD FEED ERROR:', error.message);
+        next(error);
+    }
+};
+
 const deletePost = async (req, res, next) => {
     try {
         const post = await Post.findById(req.params.id);
-
         if (!post) {
             return res.status(404).json({ success: false, message: 'Post not found' });
         }
-
-
         if (post.author.toString() !== req.user._id.toString()) {
             return res.status(403).json({ success: false, message: 'Not authorized to delete this post' });
         }
-
-
         await Post.findByIdAndDelete(req.params.id);
-
         res.status(200).json({ success: true, message: 'Post deleted' });
-
     } catch (error) {
         console.error('DELETE POST ERROR:', error.name, '|', error.message);
-        next(error)
+        next(error);
     }
+};
 
-}
-
-
-module.exports = { createPost, getFeedPosts, getUserPosts, likePost, addComment, deletePost, getImageKitAuth };
+module.exports = { 
+    createPost, 
+    getFeedPosts, 
+    getUserPosts, 
+    likePost, 
+    addComment, 
+    deletePost, 
+    getImageKitAuth,
+    getNeighborhoodFeed
+};

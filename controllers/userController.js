@@ -179,7 +179,6 @@ const requestEmailVerification = async (req, res, next) => {
             return res.status(400).json({ success: false, message: 'Email is required' });
         }
 
-        // Domain validation
         const domain = email.split('@')[1];
         if (!domain) {
             return res.status(400).json({ success: false, message: 'Invalid email address' });
@@ -198,7 +197,6 @@ const requestEmailVerification = async (req, res, next) => {
             });
         }
 
-        // Generate 6-digit code
         const code = Math.floor(100000 + Math.random() * 900000).toString();
         const expires = new Date(Date.now() + 15 * 60 * 1000); // 15 mins
 
@@ -212,7 +210,7 @@ const requestEmailVerification = async (req, res, next) => {
         res.status(200).json({
             success: true,
             message: 'Verification code sent to your work email (logged to console in production/dev)',
-            mockCode: code // Returned for testing purposes
+            mockCode: code
         });
     } catch (error) {
         console.error('REQUEST EMAIL VERIFICATION ERROR:', error.name, '|', error.message);
@@ -236,7 +234,6 @@ const confirmEmailVerification = async (req, res, next) => {
             return res.status(400).json({ success: false, message: 'Invalid or expired verification code' });
         }
 
-        // Extract company name from domain
         const domain = email.split('@')[1];
         const companyName = domain.split('.')[0].toUpperCase();
 
@@ -269,7 +266,6 @@ const verifyGitHub = async (req, res, next) => {
             return res.status(400).json({ success: false, message: 'GitHub username is required' });
         }
 
-        // Fetch user events from GitHub API
         let commitsCount = 0;
         try {
             const response = await fetch(`https://api.github.com/users/${githubUsername}/events`, {
@@ -286,8 +282,7 @@ const verifyGitHub = async (req, res, next) => {
             }
 
             const events = await response.json();
-            
-            // Calculate commit contributions
+
             events.forEach(event => {
                 if (event.type === 'PushEvent' && event.payload && event.payload.commits) {
                     commitsCount += event.payload.commits.length;
@@ -295,11 +290,9 @@ const verifyGitHub = async (req, res, next) => {
             });
         } catch (apiErr) {
             console.error('GitHub API error, using mock fallback contributions:', apiErr.message);
-            // Fallback mock contribution score if rate limited or API offline
             commitsCount = Math.floor(Math.random() * 25) + 5;
         }
 
-        // Mark as verified if commits > 0
         const user = await User.findById(req.user._id);
         if (!user) {
             return res.status(404).json({ success: false, message: 'User not found' });
@@ -355,6 +348,104 @@ const verifyFigma = async (req, res, next) => {
     }
 };
 
+const requestPhoneVerification = async (req, res, next) => {
+    try {
+        const { phone } = req.body;
+        if (!phone) {
+            return res.status(400).json({ success: false, message: 'Phone number is required' });
+        }
+
+        const otp = Math.floor(100000 + Math.random() * 900000).toString();
+        const expires = new Date(Date.now() + 10 * 60 * 1000); // 10 mins
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.phoneOtp = otp;
+        user.phoneOtpExpires = expires;
+        await user.save();
+
+        console.log(`[SMS OTP] Verification code for ${phone}: ${otp}`);
+
+        res.status(200).json({
+            success: true,
+            message: `Mock OTP code sent to ${phone}!`,
+            otp
+        });
+    } catch (error) {
+        console.error('PHONE VERIFY REQUEST ERROR:', error.message);
+        next(error);
+    }
+};
+
+const confirmPhoneVerification = async (req, res, next) => {
+    try {
+        const { phone, otp } = req.body;
+        if (!phone || !otp) {
+            return res.status(400).json({ success: false, message: 'Phone and OTP code are required' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        if (user.phoneOtp !== otp || new Date() > user.phoneOtpExpires) {
+            return res.status(400).json({ success: false, message: 'Invalid or expired OTP code' });
+        }
+
+        user.phone = phone;
+        user.phoneVerified = true;
+        user.phoneOtp = '';
+        user.phoneOtpExpires = undefined;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: 'Phone number verified successfully!',
+            user: {
+                phone: user.phone,
+                phoneVerified: user.phoneVerified
+            }
+        });
+    } catch (error) {
+        console.error('PHONE VERIFY CONFIRM ERROR:', error.message);
+        next(error);
+    }
+};
+
+const verifyPincode = async (req, res, next) => {
+    try {
+        const { pincode } = req.body;
+        if (!pincode || pincode.trim().length < 3) {
+            return res.status(400).json({ success: false, message: 'Please enter a valid pincode / postal code' });
+        }
+
+        const user = await User.findById(req.user._id);
+        if (!user) {
+            return res.status(404).json({ success: false, message: 'User not found' });
+        }
+
+        user.pincode = pincode.trim();
+        user.pincodeVerified = true;
+        await user.save();
+
+        res.status(200).json({
+            success: true,
+            message: `Successfully verified and assigned to neighborhood: ${pincode}`,
+            user: {
+                pincode: user.pincode,
+                pincodeVerified: user.pincodeVerified
+            }
+        });
+    } catch (error) {
+        console.error('VERIFY PINCODE ERROR:', error.message);
+        next(error);
+    }
+};
+
 module.exports = {
     getUserProfile,
     updateProfile,
@@ -366,5 +457,8 @@ module.exports = {
     requestEmailVerification,
     confirmEmailVerification,
     verifyGitHub,
-    verifyFigma
+    verifyFigma,
+    requestPhoneVerification,
+    confirmPhoneVerification,
+    verifyPincode
 };

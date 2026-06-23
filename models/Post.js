@@ -31,7 +31,27 @@ const postSchema = new mongoose.Schema({
             text: { type: String, required: true, maxlength: 1000 },
             createdAt: { type: Date, default: Date.now },
         }
-    ]
-}, { timestamps: true })
+    ],
+
+    postType: {
+        type: String,
+        enum: ['general', 'neighborhood', 'lost_found'],
+        default: 'general'
+    },
+    pincode: {
+        type: String,
+        index: true
+    },
+    lostFoundStatus: {
+        type: String,
+        enum: ['lost', 'found']
+    },
+    lostFoundLocation: {
+        type: String
+    },
+    lostFoundItem: {
+        type: String
+    }
+}, { timestamps: true });
 
 module.exports = mongoose.model('Post', postSchema);

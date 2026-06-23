@@ -12,7 +12,10 @@ const {
     requestEmailVerification,
     confirmEmailVerification,
     verifyGitHub,
-    verifyFigma
+    verifyFigma,
+    requestPhoneVerification,
+    confirmPhoneVerification,
+    verifyPincode
 } = require('../controllers/userController');
 
 
@@ -22,6 +25,11 @@ router.post('/verify-email-request', protect, requestEmailVerification);
 router.post('/verify-email-confirm', protect, confirmEmailVerification);
 router.post('/verify-github', protect, verifyGitHub);
 router.post('/verify-figma', protect, verifyFigma);
+
+// Nextdoor Extensions
+router.post('/verify-phone-request', protect, requestPhoneVerification);
+router.post('/verify-phone-confirm', protect, confirmPhoneVerification);
+router.post('/verify-pincode', protect, verifyPincode);
 
 router.get('/:id', protect, getUserProfile);
 router.put('/profile', protect, updateProfile);
